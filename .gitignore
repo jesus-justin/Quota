@@ -1,0 +1,6 @@
+# Build outputs
+QUOTA/bin/
+QUOTA/obj/
+
+# Local secrets
+QUOTA/.env
