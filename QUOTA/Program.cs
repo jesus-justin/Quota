@@ -137,41 +137,55 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f4efe6;
-      --bg-deep: #efe6d9;
-      --panel: rgba(255, 250, 242, 0.8);
-      --panel-strong: #fff7eb;
-      --ink: #1d130f;
-      --accent: #c3572f;
-      --accent-2: #0f6f74;
-      --muted: #6f5848;
-      --line: #e4cdb6;
-      --shadow: 0 16px 35px rgba(86, 42, 21, 0.12);
+      --bg: #1a1410;
+      --bg-accent: #2d241f;
+      --panel: rgba(45, 36, 31, 0.85);
+      --panel-strong: #3d3228;
+      --ink: #f5e6d3;
+      --accent: #d4a574;
+      --accent-dark: #8b6f47;
+      --accent-warm: #e8924a;
+      --muted: #b8a895;
+      --line: #5a4a3f;
+      --shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      --book-spine: #8b4513;
+      --page-color: #f9f5f0;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
       color: var(--ink);
-      background:
-        radial-gradient(circle at 84% 7%, rgba(245, 182, 126, 0.28) 0, transparent 35%),
-        radial-gradient(circle at 13% 90%, rgba(36, 147, 153, 0.2) 0, transparent 30%),
-        linear-gradient(160deg, var(--bg) 0%, var(--bg-deep) 100%);
+      background: linear-gradient(135deg, #1a1410 0%, #2d1810 50%, #1a1410 100%);
       font-family: "Outfit", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       line-height: 1.55;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(212, 165, 116, 0.03) 2px, rgba(212, 165, 116, 0.03) 4px),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(212, 165, 116, 0.02) 2px, rgba(212, 165, 116, 0.02) 4px);
+      pointer-events: none;
+      z-index: 1;
     }
     .bg-noise {
       position: fixed;
       inset: 0;
       pointer-events: none;
-      opacity: 0.22;
-      background-image: radial-gradient(rgba(0, 0, 0, 0.1) 0.4px, transparent 0.4px);
-      background-size: 3px 3px;
+      opacity: 0.15;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 0.5px, transparent 0.5px);
+      background-size: 4px 4px;
+      z-index: 2;
     }
     .wrap {
       max-width: 1080px;
       margin: 0 auto;
       padding: 24px 20px 40px;
+      position: relative;
+      z-index: 3;
     }
     .masthead {
       display: flex;
@@ -180,6 +194,8 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       justify-content: space-between;
       gap: 12px;
       margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--line);
     }
     h1 {
       margin: 0;
@@ -187,47 +203,93 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       font-size: clamp(1.8rem, 4vw, 2.75rem);
       font-family: "Fraunces", Georgia, serif;
       line-height: 1.1;
+      background: linear-gradient(135deg, var(--accent), var(--accent-warm));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
     .sub {
       margin: 6px 0 0;
       color: var(--muted);
-      font-size: 1rem;
+      font-size: 0.98rem;
+      font-style: italic;
     }
     .status-pill {
       margin: 0;
-      border: 1px solid var(--line);
+      border: 1px solid var(--accent-dark);
       border-radius: 999px;
       padding: 7px 12px;
-      background: #fff4e5;
-      color: #5a3523;
+      background: rgba(139, 111, 71, 0.3);
+      color: var(--accent);
       font-size: 0.92rem;
       font-weight: 600;
     }
     .hero-card, .card, form, .control-bar {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: 8px;
       padding: 16px;
       box-shadow: var(--shadow);
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(8px);
     }
     .hero-card {
-      margin-top: 8px;
-      border-left: 8px solid var(--accent);
-      background: linear-gradient(135deg, rgba(255, 247, 235, 0.95), rgba(244, 239, 230, 0.95));
+      margin-top: 12px;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(to right, rgba(45, 36, 31, 0.95), rgba(61, 50, 40, 0.95));
+      border: 1px solid #6a5a4f;
+      border-left: none;
+      border-right: none;
+      padding: 32px 40px;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background-image:
+        linear-gradient(90deg, transparent 0%, transparent 45%, rgba(212, 165, 116, 0.06) 47%, rgba(212, 165, 116, 0.06) 53%, transparent 55%, transparent 100%),
+        linear-gradient(135deg, rgba(139, 69, 19, 0.15) 0%, transparent 50%, rgba(139, 69, 19, 0.1) 100%);
+    }
+    .hero-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center 30%, rgba(248, 245, 240, 0.08), transparent 70%);
+      pointer-events: none;
+    }
+    .hero-card::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, transparent, rgba(212, 165, 116, 0.4), transparent);
+      opacity: 0.8;
     }
     .hero-kicker {
-      margin: 0 0 4px;
+      margin: 0 0 8px;
       text-transform: uppercase;
-      letter-spacing: 0.09em;
-      font-size: 0.77rem;
-      color: #6a4939;
-      font-weight: 700;
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      color: var(--accent-dark);
+      font-weight: 800;
+      position: relative;
+      z-index: 1;
     }
     .text {
-      font-size: 1.1rem;
-      margin: 0 0 10px;
+      font-size: 1.25rem;
+      margin: 0 0 12px;
       font-family: "Fraunces", Georgia, serif;
+      line-height: 1.6;
+      color: var(--page-color);
+      position: relative;
+      z-index: 1;
+      font-weight: 600;
+    }
+    .hero-card .text {
+      font-size: 1.35rem;
     }
     .meta {
       margin: 0 0 10px;
@@ -237,62 +299,97 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       gap: 7px;
       flex-wrap: wrap;
       font-size: 0.94rem;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-card .meta {
+      color: #c8b8a0;
+      font-size: 1rem;
     }
     .dot { opacity: 0.6; }
     .badge {
-      border: 1px solid #d8c3ad;
-      border-radius: 999px;
-      padding: 2px 8px;
+      border: 1px solid var(--accent-dark);
+      border-radius: 20px;
+      padding: 3px 10px;
       font-size: 0.83rem;
-      background: #fff;
+      background: rgba(139, 111, 71, 0.25);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .hero-card .badge {
+      background: rgba(212, 165, 116, 0.2);
+      border-color: #a68457;
+      color: #f0d9c7;
     }
     a {
-      color: var(--accent-2);
+      color: var(--accent-warm);
       text-decoration: none;
       font-weight: 700;
+      transition: color 150ms ease;
     }
-    a:hover { text-decoration: underline; }
+    a:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
     button {
       width: fit-content;
-      background: var(--accent);
-      color: #fff;
+      background: linear-gradient(135deg, var(--accent-warm), var(--accent));
+      color: #1a1410;
       border: 0;
-      border-radius: 10px;
-      padding: 10px 14px;
+      border-radius: 8px;
+      padding: 10px 16px;
       cursor: pointer;
       font-weight: 700;
       transition: transform 120ms ease, box-shadow 120ms ease, background 150ms ease;
+      position: relative;
+      z-index: 1;
     }
     button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 20px rgba(86, 42, 21, 0.18);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(232, 146, 74, 0.25);
+      background: linear-gradient(135deg, #f0a855, #dab874);
     }
     button:focus-visible, a:focus-visible, input:focus-visible {
-      outline: 3px solid rgba(15, 111, 116, 0.35);
+      outline: 3px solid rgba(212, 165, 116, 0.4);
       outline-offset: 2px;
     }
     h2 {
       margin: 22px 0 10px;
       font-family: "Fraunces", Georgia, serif;
       font-size: clamp(1.2rem, 3vw, 1.5rem);
+      color: var(--accent-warm);
+      border-bottom: 1px solid rgba(212, 165, 116, 0.2);
+      padding-bottom: 8px;
     }
     .hero-actions, .card-actions {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
       gap: 10px;
+      position: relative;
+      z-index: 1;
     }
     .ghost-link {
-      border: 1px solid #cae2e3;
-      border-radius: 999px;
-      padding: 7px 12px;
-      background: #f3fbfb;
+      border: 1px solid var(--accent-dark);
+      border-radius: 8px;
+      padding: 8px 14px;
+      background: rgba(139, 111, 71, 0.2);
       text-decoration: none;
+      color: var(--accent);
+      font-weight: 600;
+      transition: all 150ms ease;
+    }
+    .ghost-link:hover {
+      background: rgba(139, 111, 71, 0.35);
+      border-color: var(--accent);
     }
     .copy-btn {
-      background: #745446;
+      background: linear-gradient(135deg, #8b6f47, #7a5d3b);
       font-size: 0.85rem;
-      padding: 8px 11px;
+      padding: 8px 12px;
+    }
+    .copy-btn:hover {
+      background: linear-gradient(135deg, #a68457, #9b7348);
     }
     .layout-grid {
       display: grid;
@@ -306,6 +403,10 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       gap: 10px;
       position: sticky;
       top: 12px;
+      background: linear-gradient(135deg, rgba(61, 50, 40, 0.9), rgba(45, 36, 31, 0.9));
+      border: 1px solid #5a4a3f;
+      border-radius: 8px;
+      padding: 16px;
     }
     .control-row {
       display: grid;
@@ -322,50 +423,66 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       margin-top: 2px;
     }
     .genre-chip {
-      background: #fff;
-      color: #473328;
-      border: 1px solid #d8c3ad;
-      border-radius: 999px;
-      padding: 6px 10px;
+      background: rgba(139, 111, 71, 0.15);
+      color: var(--accent);
+      border: 1px solid var(--accent-dark);
+      border-radius: 20px;
+      padding: 6px 12px;
       font-size: 0.82rem;
       font-weight: 600;
+      cursor: pointer;
+      transition: all 150ms ease;
     }
-    .genre-chip.active,
     .genre-chip:hover {
-      background: #fef0df;
-      border-color: #ce946d;
-      color: #8f401f;
-      box-shadow: none;
-      transform: none;
+      background: rgba(139, 111, 71, 0.3);
+      border-color: var(--accent-warm);
+      color: var(--accent-warm);
+    }
+    .genre-chip.active {
+      background: linear-gradient(135deg, rgba(232, 146, 74, 0.4), rgba(212, 165, 116, 0.3));
+      border-color: var(--accent-warm);
+      color: var(--page-color);
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(232, 146, 74, 0.2);
     }
     form {
       margin: 0;
       display: grid;
       gap: 10px;
-      background: var(--panel-strong);
+      background: linear-gradient(135deg, rgba(61, 50, 40, 0.8), rgba(45, 36, 31, 0.8));
+      border: 1px solid #5a4a3f;
     }
     .label {
-      font-size: 0.82rem;
-      color: #654f43;
+      font-size: 0.75rem;
+      color: var(--accent);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-weight: 800;
     }
     input {
       width: 100%;
       padding: 11px 12px;
-      border-radius: 10px;
-      border: 1px solid #d8b79a;
+      border-radius: 6px;
+      border: 1px solid #5a4a3f;
       font-size: 0.98rem;
-      background: #fff;
+      background: rgba(45, 36, 31, 0.6);
       color: var(--ink);
+      transition: all 150ms ease;
+    }
+    input:focus {
+      background: rgba(45, 36, 31, 0.8);
+      border-color: var(--accent-dark);
+      box-shadow: 0 0 8px rgba(212, 165, 116, 0.2);
+    }
+    input::placeholder {
+      color: rgba(212, 165, 116, 0.4);
     }
     .hint-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.82rem;
-      color: #806353;
+      font-size: 0.78rem;
+      color: var(--accent-dark);
     }
     .grid {
       display: grid;
@@ -381,48 +498,65 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       transform: translateY(10px);
       animation: rise 360ms ease forwards;
       animation-delay: var(--delay, 0ms);
+      background: linear-gradient(135deg, rgba(61, 50, 40, 0.85), rgba(45, 36, 31, 0.85));
+      border: 1px solid #6a5a4f;
+      border-left: 4px solid var(--accent-dark);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top right, rgba(232, 146, 74, 0.05), transparent 70%);
+      pointer-events: none;
     }
     .card.is-hidden {
       display: none;
     }
     .list-stats {
       margin: 0;
-      color: #6f5848;
+      color: var(--accent-dark);
       font-size: 0.92rem;
       font-weight: 600;
     }
     .empty-state {
       margin: 0;
-      border: 1px dashed #cfb59c;
-      border-radius: 12px;
+      border: 1px dashed var(--accent-dark);
+      border-radius: 8px;
       padding: 16px;
-      color: #6f5848;
-      background: rgba(255, 250, 242, 0.65);
+      color: var(--muted);
+      background: rgba(139, 111, 71, 0.1);
       text-align: center;
     }
     .empty-note {
       margin: 0;
-      color: #6f5848;
+      color: var(--muted);
       font-weight: 500;
     }
     .error {
       margin: 12px 0;
-      border: 1px solid #db9f9f;
-      border-radius: 12px;
+      border: 1px solid #c85a5a;
+      border-radius: 8px;
       padding: 10px 12px;
-      color: #8f1d1d;
+      color: #f5a5a5;
       font-weight: 600;
-      background: #fff0f0;
+      background: rgba(200, 90, 90, 0.15);
     }
     .to-top {
       position: fixed;
       right: 20px;
       bottom: 18px;
-      background: #0f6f74;
+      background: linear-gradient(135deg, var(--accent-warm), var(--accent));
+      color: #1a1410;
       z-index: 2;
       opacity: 0;
       pointer-events: none;
       transition: opacity 180ms ease;
+      border-radius: 8px;
+      border: none;
+      padding: 12px 16px;
+      font-weight: 700;
     }
     .to-top.show {
       opacity: 1;
@@ -459,6 +593,10 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       }
       .control-row {
         grid-template-columns: 1fr;
+      }
+      .hero-card {
+        padding: 24px 20px;
+        min-height: 240px;
       }
       .hero-actions,
       .card-actions {
