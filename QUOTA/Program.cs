@@ -79,12 +79,13 @@ app.MapPost("/quotes", async (HttpRequest request) =>
     return Results.Redirect("/");
 });
 
-app.Urls.Add("http://localhost:5000");
+var appUrl = Environment.GetEnvironmentVariable("QUOTA_URL") ?? "http://localhost:5001";
+app.Urls.Add(appUrl);
 app.Run();
 
 static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, string? error)
 {
-    var random = quotes.Count > 0 ? quotes[Random.Shared.Next(quotes.Count)] : null;
+  var hasQuotes = quotes.Count > 0;
     var items = string.Join("", quotes.Select((q, i) => $"""
         <article class="card" data-text="{System.Net.WebUtility.HtmlEncode(q.Text)}" data-author="{System.Net.WebUtility.HtmlEncode(q.Author)}" data-genre="{System.Net.WebUtility.HtmlEncode(q.Genre)}" style="--delay:{i * 45}ms">
           <p class="text">&ldquo;{System.Net.WebUtility.HtmlEncode(q.Text)}&rdquo;</p>
@@ -103,19 +104,29 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
         .OrderBy(g => g)
         .Select(g => $"<button type=\"button\" class=\"genre-chip\" data-genre-filter=\"{System.Net.WebUtility.HtmlEncode(g)}\">{System.Net.WebUtility.HtmlEncode(g)}</button>"));
 
-    var randomBlock = random is null
-        ? "<p class=\"empty-note\">No quotes yet. Add one to generate your first mood + music pairing.</p>"
-        : $"""
-          <article class="hero-card" id="heroCard">
-            <p class="hero-kicker">Featured Quote</p>
-            <p class="text" id="heroText">&ldquo;{System.Net.WebUtility.HtmlEncode(random.Text)}&rdquo;</p>
-            <p class="meta" id="heroMeta"><span>{System.Net.WebUtility.HtmlEncode(random.Author)}</span><span class="dot">•</span><span class="badge">{System.Net.WebUtility.HtmlEncode(random.Genre)}</span></p>
-            <div class="hero-actions">
-              <a id="heroMusic" href="{System.Net.WebUtility.HtmlEncode(random.MusicUrl)}" target="_blank" rel="noopener">Play Mood Music</a>
-              <button type="button" id="newRandomBtn">New Random Quote</button>
+    var randomBlock = $"""
+        <div class="book-scene">
+          <article class="hero-card hero-book is-closed" id="heroBook" data-close-delay="60000">
+            <div class="book-spine" aria-hidden="true"></div>
+            <div class="book-cover" aria-hidden="true">
+              <p class="cover-kicker">QUOTA</p>
+              <p class="cover-title">Mood Journal</p>
+              <p class="cover-hint">Open me with New Random Quote</p>
+            </div>
+
+            <div class="book-page">
+              <p class="hero-kicker">Featured Quote</p>
+              <p class="text" id="heroText">Click <strong>New Random Quote</strong> to open the book.</p>
+              <p class="meta" id="heroMeta"></p>
+              <div class="hero-actions">
+                <a id="heroMusic" class="ghost-link" href="#" target="_blank" rel="noopener" hidden>Play Mood Music</a>
+                <button type="button" id="newRandomBtn" {(hasQuotes ? string.Empty : "disabled")}>New Random Quote</button>
+              </div>
             </div>
           </article>
-          """;
+        </div>
+        {(hasQuotes ? string.Empty : "<p class=\"empty-note\">No quotes yet. Add one first, then use New Random Quote.</p>")}
+        """;
 
     var status = geminiConfigured
         ? "Gemini API: Connected"
@@ -236,12 +247,88 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       margin-top: 12px;
       position: relative;
       overflow: hidden;
-      background: linear-gradient(to right, rgba(45, 36, 31, 0.95), rgba(61, 50, 40, 0.95));
-      border: 1px solid #6a5a4f;
-      border-left: none;
-      border-right: none;
-      padding: 32px 40px;
       min-height: 280px;
+    }
+    .book-scene {
+      margin-top: 12px;
+      perspective: 1800px;
+      perspective-origin: 50% 45%;
+    }
+    .hero-book {
+      margin-top: 0;
+      padding: 0;
+      min-height: 300px;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      overflow: visible;
+      transform-style: preserve-3d;
+    }
+    .hero-book::before,
+    .hero-book::after {
+      display: none;
+    }
+    .book-spine {
+      position: absolute;
+      left: 0;
+      top: 12px;
+      bottom: 12px;
+      width: 24px;
+      border-radius: 8px 0 0 8px;
+      background:
+        linear-gradient(180deg, rgba(115, 64, 29, 0.9), rgba(84, 40, 18, 0.95));
+      box-shadow: inset -2px 0 8px rgba(0, 0, 0, 0.35);
+      z-index: 1;
+    }
+    .book-cover {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      border: 1px solid #7b5e42;
+      background:
+        linear-gradient(120deg, rgba(122, 69, 31, 0.97), rgba(82, 40, 21, 0.96)),
+        linear-gradient(90deg, transparent 0%, rgba(248, 225, 186, 0.08) 45%, transparent 100%);
+      box-shadow: 0 26px 50px rgba(0, 0, 0, 0.4);
+      padding: 36px 30px;
+      transform-origin: left center;
+      transform-style: preserve-3d;
+      transition: transform 900ms cubic-bezier(0.25, 0.65, 0.2, 1);
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+    }
+    .cover-kicker {
+      margin: 0;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #e8c99f;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+    .cover-title {
+      margin: 0;
+      color: #f2dfbf;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      line-height: 1.15;
+    }
+    .cover-hint {
+      margin: 0;
+      color: #ddc19b;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .book-page {
+      position: relative;
+      border-radius: 10px;
+      border: 1px solid #6a5a4f;
+      background: linear-gradient(to right, rgba(45, 36, 31, 0.95), rgba(61, 50, 40, 0.95));
+      min-height: 300px;
+      padding: 32px 40px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -250,15 +337,17 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       background-image:
         linear-gradient(90deg, transparent 0%, transparent 45%, rgba(212, 165, 116, 0.06) 47%, rgba(212, 165, 116, 0.06) 53%, transparent 55%, transparent 100%),
         linear-gradient(135deg, rgba(139, 69, 19, 0.15) 0%, transparent 50%, rgba(139, 69, 19, 0.1) 100%);
+      box-shadow: 0 24px 44px rgba(0, 0, 0, 0.35);
+      z-index: 2;
     }
-    .hero-card::before {
+    .book-page::before {
       content: '';
       position: absolute;
       inset: 0;
       background: radial-gradient(ellipse at center 30%, rgba(248, 245, 240, 0.08), transparent 70%);
       pointer-events: none;
     }
-    .hero-card::after {
+    .book-page::after {
       content: '';
       position: absolute;
       left: 50%;
@@ -267,6 +356,12 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       width: 2px;
       background: linear-gradient(to bottom, transparent, rgba(212, 165, 116, 0.4), transparent);
       opacity: 0.8;
+    }
+    .hero-book.is-open .book-cover {
+      transform: rotateY(-145deg) translateZ(0);
+    }
+    .hero-book.is-closed .book-cover {
+      transform: rotateY(0deg) translateZ(0);
     }
     .hero-kicker {
       margin: 0 0 8px;
@@ -594,9 +689,13 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       .control-row {
         grid-template-columns: 1fr;
       }
-      .hero-card {
+      .hero-book {
+        min-height: 260px;
+      }
+      .book-cover,
+      .book-page {
+        min-height: 260px;
         padding: 24px 20px;
-        min-height: 240px;
       }
       .hero-actions,
       .card-actions {
@@ -707,9 +806,39 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
       const charCount = document.getElementById('charCount');
       const quoteForm = document.getElementById('quoteForm');
       const newRandomBtn = document.getElementById('newRandomBtn');
+      const heroBook = document.getElementById('heroBook');
       const heroText = document.getElementById('heroText');
       const heroMeta = document.getElementById('heroMeta');
       const heroMusic = document.getElementById('heroMusic');
+      let bookCloseTimer = null;
+
+      function closeBook() {
+        if (!heroBook) {
+          return;
+        }
+
+        heroBook.classList.remove('is-open');
+        heroBook.classList.add('is-closed');
+      }
+
+      function openBook() {
+        if (!heroBook) {
+          return;
+        }
+
+        heroBook.classList.remove('is-closed');
+        heroBook.classList.add('is-open');
+
+        if (bookCloseTimer) {
+          clearTimeout(bookCloseTimer);
+        }
+
+        const delayMs = Number(heroBook.dataset.closeDelay || '60000');
+        bookCloseTimer = setTimeout(() => {
+          closeBook();
+          liveAnnouncer.textContent = 'Book closed. Click New Random Quote to open it again.';
+        }, delayMs);
+      }
 
       let activeGenre = 'all';
 
@@ -825,6 +954,8 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
             heroText.textContent = `"${quote.text}"`;
             heroMeta.innerHTML = `<span>${quote.author}</span><span class="dot">•</span><span class="badge">${quote.genre}</span>`;
             heroMusic.href = quote.musicUrl;
+            heroMusic.hidden = false;
+            openBook();
             liveAnnouncer.textContent = 'Loaded a new random quote.';
           } catch {
             liveAnnouncer.textContent = 'Failed to load a random quote.';
@@ -834,6 +965,8 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
           }
         });
       }
+
+      closeBook();
 
       updateVisibleState();
     })();
