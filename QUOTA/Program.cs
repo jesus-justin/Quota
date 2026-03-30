@@ -85,7 +85,8 @@ app.Run();
 
 static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, string? error)
 {
-  var hasQuotes = quotes.Count > 0;
+    const int bookAutoCloseMs = 60_000;
+    var hasQuotes = quotes.Count > 0;
     var items = string.Join("", quotes.Select((q, i) => $"""
         <article class="card" data-text="{System.Net.WebUtility.HtmlEncode(q.Text)}" data-author="{System.Net.WebUtility.HtmlEncode(q.Author)}" data-genre="{System.Net.WebUtility.HtmlEncode(q.Genre)}" style="--delay:{i * 45}ms">
           <p class="text">&ldquo;{System.Net.WebUtility.HtmlEncode(q.Text)}&rdquo;</p>
@@ -106,7 +107,7 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
 
     var randomBlock = $"""
         <div class="book-scene">
-          <article class="hero-card hero-book is-closed" id="heroBook" data-close-delay="60000">
+          <article class="hero-card hero-book is-closed" id="heroBook" data-close-delay="{bookAutoCloseMs}">
             <div class="book-spine" aria-hidden="true"></div>
             <div class="book-cover" aria-hidden="true">
               <p class="cover-kicker">QUOTA</p>
