@@ -9,6 +9,15 @@ It uses Gemini API analysis when configured and falls back to a default mood whe
 2. Run `dotnet run`.
 3. Open `http://localhost:5001`.
 
+## Test
+
+1. Open a terminal in the repo root.
+2. Run `dotnet test QUOTA/QUOTA.sln`.
+
+## Health
+
+- `GET /health` returns a simple runtime check with quote count and Gemini configuration state.
+
 ## Notes
 
 - Keep the terminal running while using the site.

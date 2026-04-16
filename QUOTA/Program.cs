@@ -3,22 +3,45 @@ using QUOTA.Models;
 using QUOTA.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHttpClient("Gemini", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
-var app = builder.Build();
-
-var dataPath = Path.Combine(app.Environment.ContentRootPath, "Data", "quotes.json");
-var envPath = Path.Combine(app.Environment.ContentRootPath, ".env");
+var dataPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "quotes.json");
+var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
 
 var store = new QuoteStore();
-await store.LoadFromJsonAsync(dataPath);
+var startupError = string.Empty;
 
-using var httpClient = new HttpClient();
+try
+{
+  await store.LoadFromJsonAsync(dataPath);
+}
+catch (Exception ex)
+{
+  startupError = $"Quotes data could not be loaded: {ex.Message}";
+}
+
+builder.Services.AddSingleton(store);
+
 var geminiApiKey = GeminiService.ResolveApiKey(envPath);
-var geminiService = new GeminiService(httpClient, geminiApiKey);
+builder.Services.AddSingleton(sp => new GeminiService(
+  sp.GetRequiredService<IHttpClientFactory>().CreateClient("Gemini"),
+  geminiApiKey));
+
+var app = builder.Build();
+var geminiService = app.Services.GetRequiredService<GeminiService>();
+var bootstrapLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("QUOTA.Bootstrap");
+
+if (!string.IsNullOrWhiteSpace(startupError))
+{
+  bootstrapLogger.LogError(startupError);
+}
 
 app.MapGet("/", (HttpContext context) =>
 {
-    var html = BuildHomePage(store.Quotes, geminiService.IsConfigured, null);
+    var html = BuildHomePage(store.Quotes, geminiService.IsConfigured, string.IsNullOrWhiteSpace(startupError) ? null : startupError);
     return Results.Content(html, "text/html", Encoding.UTF8);
 });
 
@@ -38,15 +61,29 @@ app.MapGet("/quotes", (string? genre) =>
     return Results.Ok(store.GetQuotesByGenre(genre));
 });
 
-app.MapPost("/quotes", async (HttpRequest request) =>
+app.MapGet("/health", () => Results.Ok(new
 {
-    var form = await request.ReadFormAsync();
-    var text = form["text"].ToString().Trim();
-    var author = form["author"].ToString().Trim();
+  status = "ok",
+  quotes = store.Quotes.Count,
+  geminiConfigured = geminiService.IsConfigured,
+  startupWarning = !string.IsNullOrWhiteSpace(startupError)
+}));
+
+app.MapPost("/quotes", async (HttpRequest request, CancellationToken cancellationToken, ILogger<Program> logger) =>
+{
+    var form = await request.ReadFormAsync(cancellationToken);
+    var text = form.TryGetValue("text", out var textValues) ? textValues.ToString().Trim() : string.Empty;
+    var author = form.TryGetValue("author", out var authorValues) ? authorValues.ToString().Trim() : string.Empty;
 
     if (string.IsNullOrWhiteSpace(text))
     {
         var html = BuildHomePage(store.Quotes, geminiService.IsConfigured, "Quote text is required.");
+        return Results.Content(html, "text/html", Encoding.UTF8, StatusCodes.Status400BadRequest);
+    }
+
+    if (text.Length > 220)
+    {
+        var html = BuildHomePage(store.Quotes, geminiService.IsConfigured, "Quote text must be 220 characters or fewer.");
         return Results.Content(html, "text/html", Encoding.UTF8, StatusCodes.Status400BadRequest);
     }
 
@@ -55,15 +92,28 @@ app.MapPost("/quotes", async (HttpRequest request) =>
         author = "Unknown";
     }
 
+    if (author.Length > 80)
+    {
+        var html = BuildHomePage(store.Quotes, geminiService.IsConfigured, "Author must be 80 characters or fewer.");
+        return Results.Content(html, "text/html", Encoding.UTF8, StatusCodes.Status400BadRequest);
+    }
+
     QuoteAnalysis analysis;
     try
     {
-        analysis = await geminiService.AnalyzeQuoteAsync(text);
+        analysis = await geminiService.AnalyzeQuoteAsync(text, cancellationToken);
     }
-    catch
+  catch (Exception ex)
     {
+    logger.LogWarning(ex, "Gemini analysis failed; using fallback metadata.");
         analysis = new QuoteAnalysis("General", "https://www.youtube.com/results?search_query=ambient+music");
     }
+
+  if (!Uri.TryCreate(analysis.MusicSearchUrl, UriKind.Absolute, out var musicUri) ||
+    (musicUri.Scheme != Uri.UriSchemeHttp && musicUri.Scheme != Uri.UriSchemeHttps))
+  {
+    analysis = new QuoteAnalysis(analysis.Genre, "https://www.youtube.com/results?search_query=ambient+music");
+  }
 
     var quote = new Quote
     {
@@ -73,8 +123,17 @@ app.MapPost("/quotes", async (HttpRequest request) =>
         MusicUrl = analysis.MusicSearchUrl
     };
 
+  try
+  {
     store.AddQuote(quote);
     await store.SaveToJsonAsync(dataPath);
+  }
+  catch (Exception ex)
+  {
+    logger.LogError(ex, "Failed to persist quote.");
+    var html = BuildHomePage(store.Quotes, geminiService.IsConfigured, "The quote was analyzed but could not be saved.");
+    return Results.Content(html, "text/html", Encoding.UTF8, StatusCodes.Status500InternalServerError);
+  }
 
     return Results.Redirect("/");
 });
@@ -132,6 +191,13 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
     var status = geminiConfigured
         ? "Gemini API: Connected"
         : "Gemini API: Missing key (.env) - using fallback values";
+
+    status = $"{status} | {quotes.Count} quotes";
+
+    if (!string.IsNullOrWhiteSpace(error))
+    {
+      status += " | Data warning";
+    }
 
     var errorHtml = string.IsNullOrWhiteSpace(error)
         ? string.Empty
@@ -818,6 +884,11 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
           return;
         }
 
+        if (bookCloseTimer) {
+          clearTimeout(bookCloseTimer);
+          bookCloseTimer = null;
+        }
+
         heroBook.classList.remove('is-open');
         heroBook.classList.add('is-closed');
       }
@@ -953,7 +1024,16 @@ static string BuildHomePage(IReadOnlyList<Quote> quotes, bool geminiConfigured, 
 
             const quote = await response.json();
             heroText.textContent = `"${quote.text}"`;
-            heroMeta.innerHTML = `<span>${quote.author}</span><span class="dot">•</span><span class="badge">${quote.genre}</span>`;
+            heroMeta.replaceChildren();
+            const authorSpan = document.createElement('span');
+            authorSpan.textContent = quote.author;
+            const dotSpan = document.createElement('span');
+            dotSpan.className = 'dot';
+            dotSpan.textContent = '•';
+            const genreSpan = document.createElement('span');
+            genreSpan.className = 'badge';
+            genreSpan.textContent = quote.genre;
+            heroMeta.append(authorSpan, dotSpan, genreSpan);
             heroMusic.href = quote.musicUrl;
             heroMusic.hidden = false;
             openBook();
