@@ -1,6 +1,8 @@
 # Build outputs
 QUOTA/bin/
 QUOTA/obj/
+QUOTA.Tests/bin/
+QUOTA.Tests/obj/
 
 # Local secrets
 QUOTA/.env
